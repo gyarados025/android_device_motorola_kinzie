@@ -5,12 +5,12 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 $(call inherit-product, device/motorola/kinzie/device.mk)
 
 # Inherit some common LineageOS stuff.
-$(call inherit-product, vendor/cm/config/common_full_phone.mk)
+$(call inherit-product, vendor/dot/config/common_full_phone.mk)
 
 DEVICE_PACKAGE_OVERLAYS += device/motorola/kinzie/overlay
 
 ## Device identifier. This must come after all inclusions
-PRODUCT_NAME := lineage_kinzie
+PRODUCT_NAME := dot_kinzie
 PRODUCT_BRAND := motorola
 PRODUCT_DEVICE := kinzie
 PRODUCT_MODEL := XT1581
