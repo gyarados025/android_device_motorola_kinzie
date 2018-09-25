@@ -33,7 +33,6 @@ public class CMActionsService extends IntentService implements ScreenStateNotifi
     private final Context mContext;
 
     private final DozePulseAction mDozePulseAction;
-    private final IrGestureManager mIrGestureManager;
     private final PowerManager mPowerManager;
     private final PowerManager.WakeLock mWakeLock;
     private final ScreenReceiver mScreenReceiver;
@@ -52,26 +51,26 @@ public class CMActionsService extends IntentService implements ScreenStateNotifi
         CMActionsSettings cmActionsSettings = new CMActionsSettings(context, this);
         mSensorHelper = new SensorHelper(context);
         mScreenReceiver = new ScreenReceiver(context, this);
-        mIrGestureManager = new IrGestureManager();
 
         mDozePulseAction = new DozePulseAction(context);
         mScreenStateNotifiers.add(mDozePulseAction);
 
         // Actionable sensors get screen on/off notifications
         mScreenStateNotifiers.add(new FlatUpSensor(cmActionsSettings, mSensorHelper, mDozePulseAction));
-        mScreenStateNotifiers.add(new IrGestureSensor(cmActionsSettings, mSensorHelper, mDozePulseAction, mIrGestureManager));
+        mScreenStateNotifiers.add(new ProximitySensor(cmActionsSettings, mSensorHelper, mDozePulseAction));
         mScreenStateNotifiers.add(new StowSensor(cmActionsSettings, mSensorHelper, mDozePulseAction));
-        mScreenStateNotifiers.add(new UserAwareDisplay(cmActionsSettings, mSensorHelper, mIrGestureManager, context));
 
         // Other actions that are always enabled
+        mUpdatedStateNotifiers.add(new CameraActivationSensor(cmActionsSettings, mSensorHelper));
+        if (!Device.isSurnia()){
+            mUpdatedStateNotifiers.add(new ChopChopSensor(cmActionsSettings, mSensorHelper));
+        } else {
+            Log.d(TAG, "No ChopChop");
+        }
 
-        SensorAction cameraAction = cmActionsSettings.newCameraActivationAction();
-        SensorAction chopChopAction = cmActionsSettings.newChopChopAction();
-
-        mUpdatedStateNotifiers.add(new CameraActivationSensor(cmActionsSettings, cameraAction, mSensorHelper));
-        mUpdatedStateNotifiers.add(new ChopChopSensor(cmActionsSettings, chopChopAction, mSensorHelper));
-        mUpdatedStateNotifiers.add(new IrSilencer(cmActionsSettings, context, mSensorHelper,
-                mIrGestureManager));
+        mUpdatedStateNotifiers.add(new ProximitySilencer(cmActionsSettings, context, mSensorHelper));
+        mUpdatedStateNotifiers.add(new FlipToMute(cmActionsSettings, context, mSensorHelper));
+        mUpdatedStateNotifiers.add(new LiftToSilence(cmActionsSettings, context, mSensorHelper));
 
         mPowerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "CMActionsWakeLock");
@@ -84,9 +83,9 @@ public class CMActionsService extends IntentService implements ScreenStateNotifi
 
     @Override
     public void screenTurnedOn() {
-        if (!mWakeLock.isHeld()) {
-            mWakeLock.acquire();
-        }
+            if (!mWakeLock.isHeld()) {
+                mWakeLock.acquire();
+            }
         for (ScreenStateNotifier screenStateNotifier : mScreenStateNotifiers) {
             screenStateNotifier.screenTurnedOn();
         }
@@ -94,9 +93,9 @@ public class CMActionsService extends IntentService implements ScreenStateNotifi
 
     @Override
     public void screenTurnedOff() {
-        if (mWakeLock.isHeld()) {
-            mWakeLock.release();
-        }
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
         for (ScreenStateNotifier screenStateNotifier : mScreenStateNotifiers) {
             screenStateNotifier.screenTurnedOff();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The CyanogenMod Project
+ * Copyright (c) 2015-2016 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ public class ChopChopSensor implements SensorEventListener, UpdatedStateNotifier
     private static final int TURN_SCREEN_ON_WAKE_LOCK_MS = 500;
 
     private final CMActionsSettings mCMActionsSettings;
-    private final SensorAction mAction;
     private final SensorHelper mSensorHelper;
     private final Sensor mSensor;
     private final Sensor mProx;
@@ -38,10 +37,8 @@ public class ChopChopSensor implements SensorEventListener, UpdatedStateNotifier
     private boolean mIsEnabled;
     private boolean mProxIsCovered;
 
-    public ChopChopSensor(CMActionsSettings cmActionsSettings, SensorAction action,
-        SensorHelper sensorHelper) {
+    public ChopChopSensor(CMActionsSettings cmActionsSettings, SensorHelper sensorHelper) {
         mCMActionsSettings = cmActionsSettings;
-        mAction = action;
         mSensorHelper = sensorHelper;
         mSensor = sensorHelper.getChopChopSensor();
         mProx = sensorHelper.getProximitySensor();
@@ -69,7 +66,7 @@ public class ChopChopSensor implements SensorEventListener, UpdatedStateNotifier
             Log.d(TAG, "proximity sensor covered, ignoring chop-chop");
             return;
         }
-        mAction.action();
+        mCMActionsSettings.chopChopAction();
     }
 
     @Override
@@ -86,4 +83,5 @@ public class ChopChopSensor implements SensorEventListener, UpdatedStateNotifier
         public void onAccuracyChanged(Sensor mSensor, int accuracy) {
         }
     };
+
 }

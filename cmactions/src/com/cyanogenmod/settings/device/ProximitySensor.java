@@ -21,30 +21,25 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.util.Log;
 
-import static com.cyanogenmod.settings.device.IrGestureManager.*;
-
-public class IrGestureSensor implements ScreenStateNotifier, SensorEventListener {
-    private static final String TAG = "CMActions-IRGestureSensor";
-
-    private static final int IR_GESTURES_FOR_SCREEN_OFF = (1 << IR_GESTURE_SWIPE) | (1 << IR_GESTURE_APPROACH);
+public class ProximitySensor implements ScreenStateNotifier, SensorEventListener {
+    private static final String TAG = "CMActions-ProximitySensor";
 
     private final CMActionsSettings mCMActionsSettings;
     private final SensorHelper mSensorHelper;
     private final SensorAction mSensorAction;
-    private final IrGestureVote mIrGestureVote;
     private final Sensor mSensor;
 
     private boolean mEnabled;
 
-    public IrGestureSensor(CMActionsSettings cmActionsSettings, SensorHelper sensorHelper,
-                SensorAction action, IrGestureManager irGestureManager) {
+    private boolean mSawNear = false;
+
+    public ProximitySensor(CMActionsSettings cmActionsSettings, SensorHelper sensorHelper,
+                SensorAction action) {
         mCMActionsSettings = cmActionsSettings;
         mSensorHelper = sensorHelper;
         mSensorAction = action;
-        mIrGestureVote = new IrGestureVote(irGestureManager);
 
-        mSensor = sensorHelper.getIrGestureSensor();
-        mIrGestureVote.voteForSensors(0);
+        mSensor = sensorHelper.getProximitySensor();
     }
 
     @Override
@@ -52,7 +47,6 @@ public class IrGestureSensor implements ScreenStateNotifier, SensorEventListener
         if (mEnabled) {
             Log.d(TAG, "Disabling");
             mSensorHelper.unregisterListener(this);
-            mIrGestureVote.voteForSensors(0);
             mEnabled = false;
         }
     }
@@ -62,20 +56,18 @@ public class IrGestureSensor implements ScreenStateNotifier, SensorEventListener
         if (mCMActionsSettings.isIrWakeupEnabled() && !mEnabled) {
             Log.d(TAG, "Enabling");
             mSensorHelper.registerListener(mSensor, this);
-            mIrGestureVote.voteForSensors(IR_GESTURES_FOR_SCREEN_OFF);
             mEnabled = true;
         }
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        int gesture = (int) event.values[1];
-
-        if (gesture == IR_GESTURE_SWIPE || gesture == IR_GESTURE_APPROACH) {
-            Log.d(TAG, "event: [" + event.values.length + "]: " + event.values[0] + ", " +
-                event.values[1] + ", " + event.values[2]);
+        boolean isNear = event.values[0] < mSensor.getMaximumRange();
+        if (mSawNear && !isNear) {
+            Log.d(TAG, "wave triggered");
             mSensorAction.action();
         }
+        mSawNear = isNear;
     }
 
     @Override

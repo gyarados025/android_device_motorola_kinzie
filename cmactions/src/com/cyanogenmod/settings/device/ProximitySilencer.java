@@ -25,13 +25,11 @@ import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import static com.cyanogenmod.settings.device.IrGestureManager.*;
 import static android.telephony.TelephonyManager.*;
 
-public class IrSilencer extends PhoneStateListener implements SensorEventListener, UpdatedStateNotifier {
-    private static final String TAG = "CMActions-IRSilencer";
+public class ProximitySilencer extends PhoneStateListener implements SensorEventListener, UpdatedStateNotifier {
+    private static final String TAG = "CMActions-ProximitySilencer";
 
-    private static final int IR_GESTURES_FOR_RINGING = (1 << IR_GESTURE_SWIPE);
     private static final int SILENCE_DELAY_MS = 500;
 
     private final TelecomManager mTelecomManager;
@@ -39,21 +37,20 @@ public class IrSilencer extends PhoneStateListener implements SensorEventListene
     private final CMActionsSettings mCMActionsSettings;
     private final SensorHelper mSensorHelper;
     private final Sensor mSensor;
-    private final IrGestureVote mIrGestureVote;
-
     private boolean mIsRinging;
     private long mRingStartedMs;
+    private boolean mCoveredRinging;
 
-    public IrSilencer(CMActionsSettings cmActionsSettings, Context context,
-                SensorHelper sensorHelper, IrGestureManager irGestureManager) {
+    public ProximitySilencer(CMActionsSettings cmActionsSettings, Context context,
+                SensorHelper sensorHelper) {
         mTelecomManager = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
         mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
         mCMActionsSettings = cmActionsSettings;
         mSensorHelper = sensorHelper;
-        mSensor = sensorHelper.getIrGestureSensor();
-        mIrGestureVote = new IrGestureVote(irGestureManager);
-        mIrGestureVote.voteForSensors(0);
+        mSensor = sensorHelper.getProximitySensor();
+        mCoveredRinging = false;
+        mIsRinging = false;
     }
 
     @Override
@@ -67,19 +64,29 @@ public class IrSilencer extends PhoneStateListener implements SensorEventListene
 
     @Override
     public synchronized void onSensorChanged(SensorEvent event) {
-        int gesture = (int) event.values[1];
+        boolean isNear = event.values[0] < mSensor.getMaximumRange();
+        long now = System.currentTimeMillis();
 
-        if (gesture == IR_GESTURE_SWIPE && mIsRinging) {
+        if (isNear){
+            if (mIsRinging && (now - mRingStartedMs >= SILENCE_DELAY_MS)){
+                mCoveredRinging = true;
+            } else {
+                mCoveredRinging = false;
+            }
+            return;
+        }
+
+        if (!isNear && mIsRinging) {
             Log.d(TAG, "event: [" + event.values.length + "]: " + event.values[0] + ", " +
-                event.values[1] + ", " + event.values[2]);
-            long now = System.currentTimeMillis();
-            if (now - mRingStartedMs >= SILENCE_DELAY_MS) {
+                event.values[1] + ", " + event.values[2] + " covered " + Boolean.toString(mCoveredRinging));
+            if (mCoveredRinging) {
                 Log.d(TAG, "Silencing ringer");
                 mTelecomManager.silenceRinger();
             } else {
                 Log.d(TAG, "Ignoring silence gesture: " + now + " is too close to " +
-                        mRingStartedMs + ", delay=" + SILENCE_DELAY_MS);
+                        mRingStartedMs + ", delay=" + SILENCE_DELAY_MS + " or covered " + Boolean.toString(mCoveredRinging));
             }
+            mCoveredRinging = false;
         }
     }
 
@@ -88,13 +95,11 @@ public class IrSilencer extends PhoneStateListener implements SensorEventListene
         if (state == CALL_STATE_RINGING && !mIsRinging) {
             Log.d(TAG, "Ringing started");
             mSensorHelper.registerListener(mSensor, this);
-            mIrGestureVote.voteForSensors(IR_GESTURES_FOR_RINGING);
             mIsRinging = true;
             mRingStartedMs = System.currentTimeMillis();
         } else if (state != CALL_STATE_RINGING && mIsRinging) {
             Log.d(TAG, "Ringing stopped");
             mSensorHelper.unregisterListener(this);
-            mIrGestureVote.voteForSensors(0);
             mIsRinging = false;
         }
     }
