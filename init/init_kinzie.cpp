@@ -72,7 +72,7 @@ void vendor_load_properties()
     if (sku == "XT1580") {
 	property_override("ro.product.name", "Moto X Force");
         property_set("ro.product.display", "Moto X Force");
-        property_set("ro.telephony.default_network", "9,10");
+        property_set("ro.telephony.default_network", "9,0");
         property_set("telephony.lteOnCdmaDevice", "0");
         // Region specifics
         if ((car == "reteu") || (car == "retgb")) {
@@ -132,6 +132,7 @@ void vendor_load_properties()
 }
 static void setSsim(void)
 {
+    property_set("persist.cne.feature", "0");
     property_set("ro.media.enc.aud.fileformat", "qcp");
     property_set("ro.media.enc.aud.codec", "qcelp");
     property_set("ro.media.enc.aud.bps", "13300");
@@ -177,6 +178,7 @@ static void setLatMsim(void)
     property_set("persist.radio.all_bc_msg","all");
     property_set("persist.radio.mot_ecc_enabled","1");
     property_set("persist.radio.force_get_pref","1");
+    
     setMsim();
 }
 
